@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreateGame = async () => {
@@ -34,6 +36,17 @@ const HomePage = () => {
 
   return (
     <div className="home-page">
+      <div style={{ position: 'absolute', top: '2rem', right: '2rem' }}>
+        <button 
+          className="btn btn-secondary" 
+          onClick={toggleTheme}
+          style={{ minWidth: 'auto', padding: '0.8rem' }}
+          title="Сменить тему"
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+      </div>
+      
       <h1 className="home-title">Длина волны</h1>
       <div className="home-buttons">
         <button 

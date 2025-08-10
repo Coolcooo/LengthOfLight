@@ -4,7 +4,8 @@ import type { GameState } from '../types/game';
 interface GameControlsProps {
   gameState: GameState;
   isOwner: boolean;
-  isCurrentLeader: boolean;
+  isCurrentLeader: boolean; // текущий пользователь ведущий активной команды
+  isCurrentTeamNonLeader: boolean; // пользователь в активной команде, но не ведущий
   onStartGame: () => void;
   onSpinWheel: () => void;
   onSetAssociation: (association: string) => void;
@@ -15,6 +16,7 @@ const GameControls = ({
   gameState,
   isOwner,
   isCurrentLeader,
+  isCurrentTeamNonLeader,
   onStartGame,
   onSpinWheel,
   onSetAssociation,
@@ -33,13 +35,6 @@ const GameControls = ({
   if (!gameState.isGameStarted) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-        <div className="room-info">
-          <div className="room-id">Комната: {gameState.id}</div>
-          <div className="room-link">
-            Поделитесь ссылкой: {window.location.href}
-          </div>
-        </div>
-
         {isOwner && (
           <button className="btn btn-primary" onClick={onStartGame}>
             Начать игру
@@ -113,7 +108,7 @@ const GameControls = ({
       )}
 
       {/* Кнопка подтверждения стрелки */}
-      {gameState.currentAssociation && gameState.arrowPosition !== undefined && (
+      {gameState.currentAssociation && gameState.arrowPosition !== undefined && isCurrentTeamNonLeader && (
         <button className="btn btn-primary" onClick={onConfirmArrow}>
           Принять позицию стрелки
         </button>

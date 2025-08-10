@@ -1,5 +1,6 @@
 export interface Player {
   id: string;
+  userId: string; // Уникальный идентификатор пользователя
   name: string;
   teamId: number;
   isOwner: boolean;
@@ -19,9 +20,12 @@ export interface GameState {
   teams: Team[];
   currentTeamId: number;
   currentRound: number;
+  // Количество завершённых ходов (подсказок) с момента последней смены ведущих
+  turnsSinceLeaderRotation: number;
   isGameStarted: boolean;
   isGameFinished: boolean;
   wheelResult?: number;
+  wheelSectors?: WheelSector[];
   currentAntonyms?: [string, string];
   currentAssociation?: string;
   arrowPosition?: number;
@@ -38,6 +42,7 @@ export interface WheelSector {
 export enum GameEvents {
   JOIN_ROOM = 'join_room',
   LEAVE_ROOM = 'leave_room',
+  CHANGE_TEAM = 'change_team',
   START_GAME = 'start_game',
   SPIN_WHEEL = 'spin_wheel',
   SET_ASSOCIATION = 'set_association',
@@ -52,6 +57,7 @@ export enum GameEvents {
 export interface JoinRoomData {
   roomId: string;
   playerName: string;
+  userId: string;
   teamId?: number;
 }
 

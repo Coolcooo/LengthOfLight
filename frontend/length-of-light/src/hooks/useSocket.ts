@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { getUserId } from '../utils/userId';
 import type { GameState } from '../types/game';
 
 // Константы событий
 const GameEvents = {
   JOIN_ROOM: 'join_room',
   LEAVE_ROOM: 'leave_room',
+  CHANGE_TEAM: 'change_team',
   START_GAME: 'start_game',
   SPIN_WHEEL: 'spin_wheel',
   SET_ASSOCIATION: 'set_association',
@@ -70,15 +72,22 @@ export const useSocket = () => {
     };
   }, []);
 
-  const joinRoom = (roomId: string, playerName: string, teamId?: number) => {
+  const joinRoom = (roomId: string, playerName: string) => {
     if (socket) {
-      socket.emit(GameEvents.JOIN_ROOM, { roomId, playerName, teamId });
+      const userId = getUserId(); // Получаем уникальный ID пользователя
+      socket.emit(GameEvents.JOIN_ROOM, { roomId, playerName, userId });
     }
   };
 
   const leaveRoom = () => {
     if (socket) {
       socket.emit(GameEvents.LEAVE_ROOM);
+    }
+  };
+
+  const changeTeam = (newTeam: number) => {
+    if (socket) {
+      socket.emit(GameEvents.CHANGE_TEAM, { team: newTeam });
     }
   };
 
@@ -123,6 +132,7 @@ export const useSocket = () => {
     connected,
     joinRoom,
     leaveRoom,
+    changeTeam,
     startGame,
     spinWheel,
     setAssociation,

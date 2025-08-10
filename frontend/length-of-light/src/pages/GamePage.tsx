@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
+import { useTheme } from '../contexts/ThemeContext';
 import type { UserSettings, Player } from '../types/game';
+import { getUserId } from '../utils/userId';
 import WheelComponent from '../components/WheelComponent';
 import TeamPanel from '../components/TeamPanel';
 import GameControls from '../components/GameControls';
@@ -9,10 +11,33 @@ import GameControls from '../components/GameControls';
 const GamePage = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
-  const [playerName, setPlayerName] = useState('');
-  const [selectedTeam, setSelectedTeam] = useState<number>(1);
+  const { theme, toggleTheme } = useTheme();
+  const [playerName, setPlayerName] = useState(() => {
+    // Синхронно читаем сохранённое имя до первого рендера, чтобы избежать мигания формы
+    let nameFromSettings = '';
+    try {
+      const savedSettings = localStorage.getItem('gameSettings');
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings) as UserSettings;
+        if (parsed.nickname) nameFromSettings = parsed.nickname;
+      }
+      if (!nameFromSettings) {
+        const last = localStorage.getItem('lastPlayerName');
+        if (last) nameFromSettings = last;
+      }
+    } catch (e) {
+      console.error('Failed to load saved name', e);
+    }
+    return nameFromSettings;
+  });
   const [isJoined, setIsJoined] = useState(false);
+  // Флаг, что мы уже пытались присоединиться (чтобы не слать повторно)
+  const [attemptedJoin, setAttemptedJoin] = useState(false); // попытка ещё не совершена, даже если имя сохранено
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const userId = getUserId();
+  // Запоминаем, что имя было загружено (а не вводится пользователем заново)
+  const hadSavedNameRef = useRef(playerName !== '');
 
   const {
     gameState,
@@ -20,6 +45,7 @@ const GamePage = () => {
     connected,
     joinRoom,
     leaveRoom,
+    changeTeam,
     startGame,
     spinWheel,
     setAssociation,
@@ -29,43 +55,80 @@ const GamePage = () => {
   } = useSocket();
 
   useEffect(() => {
-    // Загружаем никнейм из настроек
-    const savedSettings = localStorage.getItem('gameSettings');
-    if (savedSettings) {
-      try {
-        const parsed = JSON.parse(savedSettings) as UserSettings;
-        if (parsed.nickname) {
-          setPlayerName(parsed.nickname);
-        }
-      } catch (error) {
-        console.error('Error parsing saved settings:', error);
-      }
+    // Автоприсоединяемся только если имя было предзагружено (из сохранённых настроек)
+    if (hadSavedNameRef.current && playerName && roomId && connected && !isJoined && !attemptedJoin) {
+      setAttemptedJoin(true);
+      joinRoom(roomId, playerName.trim());
     }
-  }, []);
+  }, [connected, roomId, isJoined, attemptedJoin, playerName, joinRoom]);
+
+  // Fallback: если не получили состояние игры за 3 секунды – сбрасываем attemptedJoin для повторной попытки
+  useEffect(() => {
+    if (attemptedJoin && !isJoined && !error) {
+      const timer = setTimeout(() => {
+        if (!isJoined) {
+          setAttemptedJoin(false);
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [attemptedJoin, isJoined, error]);
 
   useEffect(() => {
-    // Находим текущего игрока в игре
     if (gameState) {
+      // Предпочитаем поиск по userId (устойчиво к смене имени)
+      let found: Player | undefined;
       for (const team of gameState.teams) {
-        const player = team.players.find(p => p.name === playerName);
-        if (player) {
-          setCurrentPlayer(player);
-          break;
+        found = team.players.find(p => p.userId === userId);
+        if (found) break;
+      }
+      // Если не нашли по userId, пробуем по имени (fallback)
+      if (!found) {
+        for (const team of gameState.teams) {
+          const byName = team.players.find(p => p.name === playerName);
+          if (byName) { found = byName; break; }
         }
       }
+      if (found) {
+        setCurrentPlayer(found);
+        if (!isJoined) setIsJoined(true);
+      }
     }
-  }, [gameState, playerName]);
+  }, [gameState, userId, playerName, isJoined]);
 
   const handleJoinGame = () => {
     if (!roomId || !playerName.trim()) return;
-    
-    joinRoom(roomId, playerName.trim(), selectedTeam);
-    setIsJoined(true);
+    localStorage.setItem('lastPlayerName', playerName.trim());
+    setAttemptedJoin(true);
+    joinRoom(roomId, playerName.trim());
+  };
+
+  const handleCopyRoomLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      // Fallback для старых браузеров
+      const textArea = document.createElement('textarea');
+      textArea.value = window.location.href;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
   };
 
   const handleLeaveGame = () => {
     leaveRoom();
     navigate('/');
+  };
+
+  const handleChangeTeam = (teamId: number) => {
+    changeTeam(teamId);
   };
 
   const handleStartGame = () => {
@@ -98,6 +161,14 @@ const GamePage = () => {
     );
   }
 
+  if ((attemptedJoin && !isJoined && !error)) {
+    return (
+      <div className="loading">
+        Входим в игру...
+      </div>
+    );
+  }
+
   if (!isJoined) {
     return (
       <div className="settings-page">
@@ -111,13 +182,6 @@ const GamePage = () => {
             </div>
           )}
 
-          <div className="room-info">
-            <div className="room-id">Комната: {roomId}</div>
-            <div className="room-link">
-              {window.location.href}
-            </div>
-          </div>
-
           <div className="form-group">
             <label htmlFor="playerName" className="form-label">
               Ваше имя
@@ -127,35 +191,12 @@ const GamePage = () => {
               id="playerName"
               className="form-input"
               value={playerName}
-              onChange={(e) => setPlayerName(e.target.value)}
+              onChange={(e) => setPlayerName(e.target.value.slice(0,20))}
               placeholder="Введите ваше имя"
               maxLength={20}
             />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Выберите команду</label>
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-              <label className="checkbox-group">
-                <input
-                  type="radio"
-                  name="team"
-                  value={1}
-                  checked={selectedTeam === 1}
-                  onChange={() => setSelectedTeam(1)}
-                />
-                Команда 1
-              </label>
-              <label className="checkbox-group">
-                <input
-                  type="radio"
-                  name="team"
-                  value={2}
-                  checked={selectedTeam === 2}
-                  onChange={() => setSelectedTeam(2)}
-                />
-                Команда 2
-              </label>
+            <div style={{ textAlign: 'right', fontSize: '0.75rem', marginTop: '0.25rem', opacity: 0.8 }}>
+              {playerName.length}/20
             </div>
           </div>
 
@@ -186,7 +227,9 @@ const GamePage = () => {
 
   const currentTeam = gameState.teams.find(t => t.id === gameState.currentTeamId);
   const currentLeader = currentTeam?.players[currentTeam.currentLeaderIndex];
-  const isCurrentPlayer = currentPlayer?.id === currentLeader?.id;
+  const isCurrentPlayer = currentPlayer?.id === currentLeader?.id; // текущий пользователь ведущий
+  const isInCurrentTeam = currentPlayer && currentTeam ? currentPlayer.teamId === currentTeam.id : false;
+  const isCurrentTeamNonLeader = Boolean(isInCurrentTeam && !isCurrentPlayer);
   const isOwner = currentPlayer?.isOwner || false;
 
   return (
@@ -208,11 +251,23 @@ const GamePage = () => {
       )}
 
       <div className="game-header">
-        <div className="game-score">
-          <div>Команда 1: {gameState.teams[0]?.score || 0}</div>
-          <div>Команда 2: {gameState.teams[1]?.score || 0}</div>
-        </div>
-        <div>
+        <div></div>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button 
+            className="btn btn-secondary" 
+            onClick={toggleTheme}
+            style={{ fontSize: '0.9rem', minWidth: 'auto', padding: '0.5rem' }}
+            title="Сменить тему"
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+          <button 
+            className="btn btn-secondary" 
+            onClick={handleCopyRoomLink}
+            style={{ fontSize: '0.9rem' }}
+          >
+            {copySuccess ? '✓ Скопировано!' : '📋 Ссылка'}
+          </button>
           <button className="btn btn-secondary" onClick={handleLeaveGame}>
             Покинуть игру
           </button>
@@ -231,19 +286,24 @@ const GamePage = () => {
           team={gameState.teams[0]} 
           isActive={gameState.currentTeamId === 1}
           isGameStarted={gameState.isGameStarted}
+          currentPlayer={currentPlayer}
+          onChangeTeam={handleChangeTeam}
         />
         <TeamPanel 
           team={gameState.teams[1]} 
           isActive={gameState.currentTeamId === 2}
           isGameStarted={gameState.isGameStarted}
+          currentPlayer={currentPlayer}
+          onChangeTeam={handleChangeTeam}
         />
 
         <div className="wheel-container">
           <WheelComponent
             wheelResult={gameState.wheelResult}
+            wheelSectors={gameState.wheelSectors}
             arrowPosition={gameState.arrowPosition}
-            isLeader={isCurrentPlayer}
             canSeeWheel={isCurrentPlayer}
+            canControl={isCurrentTeamNonLeader && !!gameState.currentAssociation} // двигать после появления ассоциации
             onMoveArrow={handleMoveArrow}
           />
 
@@ -251,6 +311,7 @@ const GamePage = () => {
             gameState={gameState}
             isOwner={isOwner}
             isCurrentLeader={isCurrentPlayer}
+            isCurrentTeamNonLeader={isCurrentTeamNonLeader}
             onStartGame={handleStartGame}
             onSpinWheel={handleSpinWheel}
             onSetAssociation={handleSetAssociation}

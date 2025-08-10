@@ -54,7 +54,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         data.roomId,
         client.id,
         data.playerName,
-        data.teamId,
+        data.userId,
       );
 
       if (!game) {
@@ -73,7 +73,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Уведомляем других игроков о новом участнике
       client.to(data.roomId).emit(GameEvents.PLAYER_JOINED, {
         playerName: data.playerName,
-        teamId: data.teamId,
       });
 
       console.log(`Player ${data.playerName} joined room ${data.roomId}`);
@@ -92,6 +91,28 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server.to(result.gameId).emit(GameEvents.GAME_UPDATE, result.game);
       this.server.to(result.gameId).emit(GameEvents.PLAYER_LEFT, {
         socketId: client.id,
+      });
+    }
+  }
+
+  @SubscribeMessage(GameEvents.CHANGE_TEAM)
+  handleChangeTeam(
+    @MessageBody() data: { team: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      const result = this.gameService.changePlayerTeam(client.id, data.team);
+      if (result) {
+        // Отправляем обновленное состояние игры всем в комнате
+        this.server.to(result.gameId).emit(GameEvents.GAME_UPDATE, result.game);
+      } else {
+        client.emit(GameEvents.ERROR, {
+          message: 'Не удалось сменить команду',
+        });
+      }
+    } catch (error) {
+      client.emit(GameEvents.ERROR, {
+        message: 'Ошибка при смене команды',
       });
     }
   }
@@ -208,10 +229,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
 
-      const updatedGame = this.gameService.confirmArrow(game.id);
+    const updatedGame = this.gameService.confirmArrow(game.id, client.id);
       if (!updatedGame) {
         client.emit(GameEvents.ERROR, {
-          message: 'Не удалось подтвердить позицию стрелки',
+      message: 'Не удалось подтвердить позицию стрелки (только игроки текущей команды, кроме ведущего, могут подтвердить)',
         });
         return;
       }
