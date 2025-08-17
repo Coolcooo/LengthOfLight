@@ -1,0 +1,98 @@
+.audio-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--bg-glass);
+  backdrop-filter: blur(10px);
+  border-radius: 25px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 10px var(--shadow-color);
+}
+
+/* Подсказка об автовоспроизведении */
+.autoplay-hint {
+  position: absolute;
+  top: -45px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: fadeInOut 5s ease-in-out;
+}
+
+.autoplay-hint::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #333;
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0; transform: translateX(-50%) translateY(-5px); }
+  10%, 90% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.audio-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+.audio-btn:hover {
+  background: var(--orange-primary);
+  color: var(--white);
+  transform: scale(1.1);
+}
+
+.audio-btn:active {
+  transform: scale(0.95);
+}
+
+.play-pause-btn.playing {
+  color: var(--orange-primary);
+}
+
+.mute-btn.muted {
+  color: var(--orange-primary);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .audio-controls {
+    gap: 0.3rem;
+    padding: 0.3rem;
+  }
+  
+  .audio-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0.3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .audio-controls {
+    gap: 0.2rem;
+    padding: 0.2rem;
+  }
+}

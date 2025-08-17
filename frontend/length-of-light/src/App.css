@@ -78,6 +78,41 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+/* Контейнер для аудио контролов */
+.audio-controls-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.global-audio-controls {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Адаптивность для аудио контролов */
+@media (max-width: 768px) {
+  .audio-controls-container {
+    top: 15px;
+    right: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .audio-controls-container {
+    top: 10px;
+    right: 10px;
+  }
+  
+  .global-audio-controls {
+    transform: scale(0.9);
+    transform-origin: top right;
+  }
 }
 
 /* Главная страница */
@@ -87,8 +122,11 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  max-height: 100vh;
   padding: 2rem;
   text-align: center;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .home-title {
@@ -122,6 +160,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation; /* Улучшает отклик на touch */
+  -webkit-tap-highlight-color: transparent; /* Убирает подсветку на iOS */
 }
 
 .btn-primary {
@@ -208,6 +248,10 @@ body {
   color: var(--text-color);
   font-size: 1rem;
   backdrop-filter: blur(10px);
+  min-height: 50px;
+  touch-action: manipulation;
+  -webkit-appearance: none; /* Убирает стандартные стили iOS */
+  appearance: none; /* Стандартное свойство для совместимости */
 }
 
 .form-input:focus {
@@ -237,9 +281,12 @@ body {
 /* Игровая страница */
 .game-page {
   min-height: 100vh;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--bg-primary);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .game-header {
@@ -262,10 +309,14 @@ body {
 .game-content {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 200px 1fr 200px;
   grid-template-rows: 1fr auto;
   gap: 2rem;
   padding: 2rem;
+  align-items: start;
+  height: calc(100vh - 80px); /* Учитываем высоту заголовка */
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .team-panel {
@@ -311,17 +362,19 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 1.5rem;
+  justify-self: center;
+  min-height: auto;
+  max-height: 50vh;
+  max-width: 100vw;
+  overflow: hidden;
 }
 
 .wheel {
-  width: 300px;
-  height: 150px;
-  border-radius: 300px 300px 0 0;
   position: relative;
   overflow: hidden;
-  border: 3px solid var(--text-color);
-  box-shadow: 0 4px 15px var(--shadow-color);
+  border: 12px solid var(--text-color);
+  box-shadow: 0 16px 60px var(--shadow-color);
 }
 
 .wheel-hidden {
@@ -330,18 +383,18 @@ body {
 
 .wheel-arrow {
   position: absolute;
-  bottom: -2px;
+  bottom: -8px;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 40px solid var(--text-color);
+  border-left: 32px solid transparent;
+  border-right: 32px solid transparent;
+  border-bottom: 160px solid var(--text-color);
   transform-origin: bottom center;
   transition: transform 0.3s ease;
   z-index: 10;
-  filter: drop-shadow(0 2px 4px var(--shadow-color));
+  filter: drop-shadow(0 8px 16px var(--shadow-color));
 }
 
 .antonyms-display {
@@ -433,25 +486,240 @@ body {
 }
 
 /* Адаптивность */
-@media (max-width: 768px) {
-  .home-title {
-    font-size: 2.5rem;
+/* Очень большие экраны (1440px+) */
+@media (min-width: 1440px) {
+  .game-content {
+    gap: 3rem;
+    padding: 3rem;
+    grid-template-columns: 250px 1fr 250px;
   }
   
+  .team-panel {
+    width: 250px !important;
+    max-height: 400px !important;
+  }
+}
+
+/* Стандартные десктопы (1024px - 1439px) */
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .game-content {
+    grid-template-columns: 180px 1fr 180px;
+    gap: 2rem;
+    padding: 2rem;
+  }
+  
+  .team-panel {
+    width: 180px !important;
+  }
+}
+
+/* Планшеты в ландшафте (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .game-content {
+    grid-template-columns: 160px 1fr 160px;
+    grid-template-rows: 1fr auto;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    max-height: 100vh;
+    overflow: hidden;
+  }
+  
+  .team-panel {
+    width: 160px !important;
+    max-height: 250px !important;
+  }
+  
+  .home-title {
+    font-size: 2.8rem;
+  }
+}
+
+/* Планшеты в портрете и большие телефоны (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
   .game-content {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
     gap: 1rem;
     padding: 1rem;
+    max-height: 100vh;
+    overflow: hidden;
   }
   
-  .wheel {
-    width: 250px;
-    height: 125px;
+  .team-panel {
+    width: 100% !important;
+    max-width: 400px !important;
+    margin: 0 auto !important;
+    max-height: 160px !important;
+    padding: 1rem !important;
+    font-size: 1rem !important;
+  }
+  
+  .home-title {
+    font-size: 2.2rem;
+    margin-bottom: 1rem;
+  }
+  
+  .game-header {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+    min-height: auto;
   }
   
   .settings-container {
-    padding: 2rem;
+    padding: 1.5rem;
     margin: 1rem;
+    max-height: 80vh;
+    overflow-y: auto;
   }
+  
+  .btn {
+    padding: 0.9rem 1.8rem;
+    font-size: 1rem;
+    min-height: 50px;
+  }
+  
+  .player-item {
+    padding: 0.8rem;
+    font-size: 1rem;
+  }
+  
+  .antonyms-display,
+  .association-input,
+  .association-display {
+    padding: 1.5rem;
+    font-size: 1.2rem;
+    max-width: 400px;
+  }
+}
+
+/* Маленькие телефоны (до 479px) */
+@media (max-width: 479px) {
+  .home-title {
+    font-size: 1.8rem;
+    margin-bottom: 0.8rem;
+  }
+  
+  .game-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 0.8rem;
+    padding: 0.8rem;
+    max-height: 100vh;
+    overflow: hidden;
+  }
+  
+  .team-panel {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: 130px !important;
+    padding: 1rem !important;
+    font-size: 0.9rem !important;
+  }
+  
+  .game-header {
+    padding: 0.8rem;
+    flex-direction: column;
+    gap: 0.8rem;
+    min-height: auto;
+  }
+  
+  .btn {
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+    min-height: 48px;
+  }
+  
+  .settings-container {
+    padding: 1rem;
+    margin: 0.8rem;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  
+  .home-buttons {
+    max-width: 260px;
+  }
+  
+  .player-item {
+    padding: 0.8rem;
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+  }
+  
+  .antonyms-display,
+  .association-input,
+  .association-display {
+    padding: 1rem;
+    font-size: 1.1rem;
+    max-width: 300px;
+  }
+  
+  .association-input input {
+    font-size: 1rem;
+    padding: 0.7rem;
+    min-height: 45px;
+  }
+  
+  .form-input {
+    font-size: 1rem;
+    padding: 1rem;
+    min-height: 48px;
+  }
+  
+  /* Уменьшаем размер секторов колеса для лучшего размещения */
+  .wheel text {
+    font-size: 12px !important;
+    font-weight: bold;
+  }
+  
+  .wheel-container {
+    min-height: auto;
+    padding: 0.5rem;
+  }
+}
+
+/* Стили для регулятора громкости в настройках */
+.volume-control-settings {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.volume-slider-settings {
+  flex: 1;
+  appearance: none;
+  height: 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  outline: none;
+  border: 1px solid var(--border-color);
+}
+
+.volume-slider-settings::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--orange-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.volume-slider-settings::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--orange-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.volume-label-settings {
+  min-width: 50px;
+  text-align: center;
+  font-weight: bold;
+  color: var(--text-color);
 }

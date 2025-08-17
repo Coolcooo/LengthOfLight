@@ -1,11 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAudioManager } from '../hooks/useAudioManager';
 
 const HomePage = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [isCreating, setIsCreating] = useState(false);
+  const audio = useAudioManager();
+
+  // Автоматически начинаем воспроизведение фоновой музыки
+  useEffect(() => {
+    const startBackgroundMusic = () => {
+      if (!audio.isPlaying) {
+        audio.play('background');
+      }
+    };
+
+    // Небольшая задержка для лучшей совместимости
+    const timer = setTimeout(startBackgroundMusic, 500);
+
+    return () => clearTimeout(timer);
+  }, [audio]);
 
   const handleCreateGame = async () => {
     setIsCreating(true);

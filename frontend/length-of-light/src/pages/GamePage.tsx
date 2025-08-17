@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
+import { useAudioManager } from '../hooks/useAudioManager';
 import { useTheme } from '../contexts/ThemeContext';
 import type { UserSettings, Player } from '../types/game';
 import { getUserId } from '../utils/userId';
@@ -38,6 +39,9 @@ const GamePage = () => {
   const userId = getUserId();
   // Запоминаем, что имя было загружено (а не вводится пользователем заново)
   const hadSavedNameRef = useRef(playerName !== '');
+  
+  // Аудио менеджер для музыки победы
+  const audio = useAudioManager();
 
   const {
     gameState,
@@ -95,6 +99,21 @@ const GamePage = () => {
       }
     }
   }, [gameState, userId, playerName, isJoined]);
+
+  // Воспроизведение музыки победы
+  useEffect(() => {
+    if (gameState?.isGameFinished && gameState?.winnerTeamId) {
+      // Проигрываем музыку победы
+      audio.play('victory');
+      
+      // Возвращаемся к игровой музыке через 10 секунд
+      const timer = setTimeout(() => {
+        audio.play('game');
+      }, 10000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [gameState?.isGameFinished, gameState?.winnerTeamId, audio]);
 
   const handleJoinGame = () => {
     if (!roomId || !playerName.trim()) return;
@@ -289,6 +308,11 @@ const GamePage = () => {
           currentPlayer={currentPlayer}
           onChangeTeam={handleChangeTeam}
         />
+
+        <div style={{ gridColumn: '2', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          {/* Пустое пространство в центре или дополнительная информация */}
+        </div>
+
         <TeamPanel 
           team={gameState.teams[1]} 
           isActive={gameState.currentTeamId === 2}

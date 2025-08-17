@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAudioManager } from '../hooks/useAudioManager';
 import type { UserSettings } from '../types/game';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const audio = useAudioManager();
   const [settings, setSettings] = useState<UserSettings>({
     nickname: '',
     soundEnabled: true,
@@ -79,6 +81,24 @@ const SettingsPage = () => {
             <label htmlFor="sound" className="form-label">
               Включить звук
             </label>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Громкость музыки</label>
+          <div className="volume-control-settings">
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={audio.volume}
+              onChange={(e) => audio.setVolume(parseFloat(e.target.value))}
+              className="volume-slider-settings"
+            />
+            <span className="volume-label-settings">
+              {Math.round(audio.volume * 100)}%
+            </span>
           </div>
         </div>
 

@@ -81,9 +81,24 @@ export class GameService {
     const existingPlayer = this.findPlayerByUserId(game, userId);
     if (existingPlayer) {
       // Игрок переподключается - обновляем только socketId
+      const wasOwner = existingPlayer.isOwner;
       existingPlayer.socketId = socketId;
       existingPlayer.name = playerName; // Обновляем имя на случай изменения
       this.socketToRoom.set(socketId, gameId);
+      
+      // Если переподключился владелец, но уже есть другой владелец, восстанавливаем права
+      if (wasOwner) {
+        // Убираем владельца у всех остальных
+        for (const team of game.teams) {
+          for (const player of team.players) {
+            if (player.id !== existingPlayer.id) {
+              player.isOwner = false;
+            }
+          }
+        }
+        existingPlayer.isOwner = true;
+      }
+      
       return game;
     }
 
@@ -122,10 +137,12 @@ export class GameService {
     const game = this.games.get(gameId);
     if (!game) return null;
 
+    let wasOwner = false;
     // Удаляем игрока из команды
     for (const team of game.teams) {
       const playerIndex = team.players.findIndex(p => p.socketId === socketId);
       if (playerIndex !== -1) {
+        wasOwner = team.players[playerIndex].isOwner;
         team.players.splice(playerIndex, 1);
         break;
       }
@@ -139,6 +156,11 @@ export class GameService {
       this.games.delete(gameId);
       this.gameWheelSectors.delete(gameId);
       return null;
+    }
+
+    // Если ушел владелец, передаем права первому игроку
+    if (wasOwner) {
+      this.transferOwnership(game);
     }
 
     return { gameId, game };
@@ -364,5 +386,15 @@ export class GameService {
     }
     
     return 0; // Если стрелка не попала ни в один сектор
+  }
+
+  private transferOwnership(game: GameState): void {
+    // Находим первого игрока и делаем его владельцем
+    for (const team of game.teams) {
+      if (team.players.length > 0) {
+        team.players[0].isOwner = true;
+        return;
+      }
+    }
   }
 }
